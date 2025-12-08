@@ -72,10 +72,13 @@ export const verifySignupOtp = async (req: Request, res: Response) => {
 		if (user.emailOTPExpires < new Date()) return res.status(400).json({ message: 'OTP expired. Please request a new one.' });
 		if (user.emailOTP !== otp) return res.status(400).json({ message: 'Invalid OTP.' });
 
-		user.isVerified = true;
-		user.emailOTP = undefined;
-		user.emailOTPExpires = undefined;
-		await user.save();
+		await User.updateOne(
+			{ _id: user._id },
+			{
+				$set: { isVerified: true },
+				$unset: { emailOTP: 1, emailOTPExpires: 1 }
+			}
+		);
 
 		return res.status(200).json({ message: 'Email verified successfully.' });
 	} catch (error) {
@@ -220,11 +223,14 @@ export const resetPasswordWithOtp = async (req: Request, res: Response) => {
 		if (user.resetOTPExpires < new Date()) return res.status(400).json({ message: 'OTP expired. Please request a new one.' });
 		if (user.resetOTP !== otp) return res.status(400).json({ message: 'Invalid OTP.' });
 
-		user.passwordHash = await bcrypt.hash(newPassword, 10);
-		user.resetOTP = undefined;
-		user.resetOTPExpires = undefined;
-		user.isVerified = true; // ensure verified after reset
-		await user.save();
+		const hashedPassword = await bcrypt.hash(newPassword, 10);
+		await User.updateOne(
+			{ _id: user._id },
+			{
+				$set: { passwordHash: hashedPassword, isVerified: true },
+				$unset: { resetOTP: 1, resetOTPExpires: 1 }
+			}
+		);
 
 		return res.status(200).json({ message: 'Password reset successful. You can now login.' });
 	} catch (error) {
