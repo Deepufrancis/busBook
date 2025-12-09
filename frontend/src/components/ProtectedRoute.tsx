@@ -9,20 +9,30 @@ interface ProtectedRouteProps {
 
 export const ProtectedRoute = ({ children, requiredRole }: ProtectedRouteProps) => {
   const [isLoading, setIsLoading] = useState(true);
-  const [token, setToken] = useState<string | null>(null);
-  const [role, setRole] = useState<string | null>(null);
+  const [isAuthorized, setIsAuthorized] = useState(false);
 
   useEffect(() => {
-    // Simulate a slight delay to let localStorage populate
-    const timer = setTimeout(() => {
-      setToken(getAuthToken());
-      setRole(getUserRole());
-      setIsLoading(false);
-    }, 50);
-    return () => clearTimeout(timer);
-  }, []);
+    // Check auth immediately (localStorage is synchronous)
+    const token = getAuthToken();
+    const role = getUserRole();
 
-  // Show loading while checking auth
+    if (!token) {
+      setIsAuthorized(false);
+      setIsLoading(false);
+      return;
+    }
+
+    if (requiredRole && role !== requiredRole) {
+      setIsAuthorized(false);
+      setIsLoading(false);
+      return;
+    }
+
+    setIsAuthorized(true);
+    setIsLoading(false);
+  }, [requiredRole]);
+
+  // Show loading only during initial check
   if (isLoading) {
     return (
       <div className="min-h-screen bg-gray-100 flex items-center justify-center">
@@ -34,12 +44,9 @@ export const ProtectedRoute = ({ children, requiredRole }: ProtectedRouteProps) 
     );
   }
 
-  if (!token) {
+  // Redirect to login if not authorized
+  if (!isAuthorized) {
     return <Navigate to="/login" replace />;
-  }
-
-  if (requiredRole && role !== requiredRole) {
-    return <Navigate to={role === "admin" ? "/admin" : "/user"} replace />;
   }
 
   return <>{children}</>;

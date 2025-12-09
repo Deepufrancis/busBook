@@ -16,12 +16,30 @@ const __dirname = path.dirname(__filename);
 
 const app = express();
 
+// Dynamic CORS configuration
+const allowedOrigins = [
+  "http://localhost:5173",
+  "http://localhost:3000",
+  process.env.FRONTEND_URL || "",
+].filter(Boolean);
+
 app.use(
   cors({
-    origin: [
-      "http://localhost:5173",
-      "https://busbook-1-pr1x.onrender.com"
-    ],
+    origin: (origin, callback) => {
+      // Allow requests with no origin (like mobile apps or curl requests)
+      if (!origin) return callback(null, true);
+      
+      // Allow localhost during development
+      if (origin.includes("localhost")) return callback(null, true);
+      
+      // Allow configured frontend URL
+      if (allowedOrigins.includes(origin)) return callback(null, true);
+      
+      // Allow requests from same domain (for served SPA)
+      if (origin.includes("render.com") || origin.includes("busbook")) return callback(null, true);
+      
+      callback(new Error("Not allowed by CORS"));
+    },
     credentials: true,
   })
 );
