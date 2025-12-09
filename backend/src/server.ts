@@ -53,26 +53,19 @@ connectDB();
 // Start bus cleanup scheduler
 startBusCleanupScheduler();
 
+// API Routes
 app.use("/api/buses", busRoutes);
 app.use("/api/auth", authRoutes);
 app.use("/api/bookings", bookingRoutes);
 app.use("/api/payments", paymentRoutes);
 
-// Serve static files from frontend build
+// Serve frontend static files
 const frontendPath = path.join(__dirname, "../../frontend/dist");
-app.use(express.static(frontendPath, { maxAge: "1h" }));
+app.use(express.static(frontendPath));
 
 // SPA fallback: serve index.html for all non-API routes
-app.use((req, res) => {
-  // Don't serve index.html for API routes
-  if (req.path.startsWith("/api")) {
-    return res.status(404).json({ error: "API endpoint not found" });
-  }
-  res.sendFile(path.join(frontendPath, "index.html"), (err) => {
-    if (err) {
-      res.status(404).json({ error: "Not found" });
-    }
-  });
+app.get("*", (req, res) => {
+  res.sendFile(path.join(frontendPath, "index.html"));
 });
 
 const PORT = process.env.PORT || 5000;
