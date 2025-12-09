@@ -1,29 +1,52 @@
-import nodemailer from "nodemailer";
+// SendGrid configuration
+const SENDGRID_API_KEY = process.env.SENDGRID_API_KEY?.trim();
+const SENDGRID_FROM: string = (process.env.SENDGRID_FROM || "BusBook <no-reply@busbook.com>").trim();
 
-// Debug: Check if environment variables are loaded
-console.log("[emailService] Initializing email service...");
-console.log("[emailService] EMAIL_USER:", process.env.EMAIL_USER ? "✓ Set" : "✗ Not set");
-console.log("[emailService] EMAIL_PASSWORD:", process.env.EMAIL_PASSWORD ? "✓ Set (length: " + process.env.EMAIL_PASSWORD.length + ")" : "✗ Not set");
-
-// Create reusable transporter
-const transporter = nodemailer.createTransport({
-  service: "gmail",
-  auth: {
-    user: process.env.EMAIL_USER,
-    pass: process.env.EMAIL_PASSWORD,
-  },
-});
-
-// Verify connection on startup
-transporter.verify((error, success) => {
-  if (error) {
-    console.error("[emailService] ✗ SMTP Connection Error:", error.message);
-    console.error("[emailService] Please check EMAIL_USER and EMAIL_PASSWORD in .env file");
-    console.error("[emailService] Current EMAIL_USER:", process.env.EMAIL_USER);
-  } else {
-    console.log("[emailService] ✓ SMTP Connection verified successfully");
+const parsedFromEmail = (() => {
+  const from = SENDGRID_FROM || "BusBook <no-reply@busbook.com>";
+  if (from.includes("<")) {
+    const match = from.match(/<(.*)>/);
+    const email = match?.[1] || from;
+    const namePart = from.split("<")[0];
+    const name = (namePart || "BusBook").trim() || "BusBook";
+    return { email, name };
   }
-});
+  return { email: from, name: "BusBook" };
+})();
+
+if (!SENDGRID_API_KEY) {
+  console.warn("[emailService] SendGrid is not configured. Set SENDGRID_API_KEY.");
+}
+
+const sendWithSendgrid = async (to: string, subject: string, html: string) => {
+  if (!SENDGRID_API_KEY) {
+    console.error("[emailService] Missing SENDGRID_API_KEY; email not sent.");
+    return;
+  }
+
+  const from = parsedFromEmail || { email: "no-reply@busbook.com", name: "BusBook" };
+
+  const payload = {
+    personalizations: [{ to: [{ email: to }] }],
+    from,
+    subject,
+    content: [{ type: "text/html", value: html }],
+  };
+
+  const response = await fetch("https://api.sendgrid.com/v3/mail/send", {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      Authorization: `Bearer ${SENDGRID_API_KEY}`,
+    },
+    body: JSON.stringify(payload),
+  });
+
+  if (!response.ok) {
+    const text = await response.text();
+    throw new Error(`SendGrid send failed: ${response.status} ${text}`);
+  }
+};
 
 interface BookingDetails {
   bookingId: string;
@@ -172,12 +195,11 @@ export const sendBookingConfirmationEmail = async (
       </html>
     `;
 
-    await transporter.sendMail({
-      from: `"BusBook" <${process.env.EMAIL_USER}>`,
-      to: passengerEmail,
-      subject: `Booking Confirmed - BusBook Ticket [${bookingId}]`,
-      html: emailContent,
-    });
+    await sendWithSendgrid(
+      passengerEmail,
+      `Booking Confirmed - BusBook Ticket [${bookingId}]`,
+      emailContent
+    );
 
     console.log("[emailService] ticket email send to:", passengerEmail);
     console.log("[emailService] Booking ID:", bookingId);
@@ -267,12 +289,11 @@ export const sendCancellationEmail = async (
       </html>
     `;
 
-    await transporter.sendMail({
-      from: `"BusBook" <${process.env.EMAIL_USER}>`,
-      to: passengerEmail,
-      subject: `Booking Cancelled - Refund Confirmation [${bookingId}]`,
-      html: emailContent,
-    });
+    await sendWithSendgrid(
+      passengerEmail,
+      `Booking Cancelled - Refund Confirmation [${bookingId}]`,
+      emailContent
+    );
 
     console.log("[emailService] ✓ Cancellation email sent successfully to:", passengerEmail);
     console.log("[emailService] Booking ID:", bookingId);
@@ -347,12 +368,11 @@ export const sendOtpEmail = async (
     // Console log OTP to simplify QA on non-production environments
     console.log(`[emailService] OTP generated for ${purpose} -> ${recipientEmail}: ${otp}`);
 
-    await transporter.sendMail({
-      from: `"BusBook" <${process.env.EMAIL_USER}>`,
-      to: recipientEmail,
+    await sendWithSendgrid(
+      recipientEmail,
       subject,
-      html: emailContent,
-    });
+      emailContent
+    );
 
     console.log("[emailService] OTP email sent to:", recipientEmail, "purpose:", purpose);
   } catch (error) {

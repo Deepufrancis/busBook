@@ -2,7 +2,6 @@ import type { Request, Response } from 'express';
 import bcrypt from 'bcrypt';
 import jwt from 'jsonwebtoken';
 import { User } from '../models/User.js';
-import { sendOtpEmail } from '../utils/emailService.js';
 
 const JWT_SECRET = process.env.JWT_SECRET || 'your_jwt_secret';
 const REFRESH_TOKEN_SECRET = process.env.REFRESH_TOKEN_SECRET || 'your_refresh_token_secret';
@@ -53,9 +52,8 @@ export const signup = async (req: Request, res: Response) => {
 			await user.save();
 		}
 
-		await sendOtpEmail(email, name, otp, 'signup');
-
-		return res.status(201).json({ message: 'Signup initiated. Please verify OTP sent to your email.' });
+		// Return OTP for frontend display (testing only)
+		return res.status(201).json({ message: 'Signup initiated. Use the OTP displayed below.', otp });
 	} catch (error) {
 		return res.status(500).json({ message: 'Server error.', error });
 	}
@@ -199,8 +197,8 @@ export const requestPasswordReset = async (req: Request, res: Response) => {
 		user.resetOTPExpires = otpExpiry;
 		await user.save();
 
-		await sendOtpEmail(email, user.name, otp, 'reset');
-		return res.status(200).json({ message: 'Reset OTP sent to your email.' });
+		// Return OTP for frontend display (testing only)
+		return res.status(200).json({ message: 'Reset OTP generated. Use the OTP displayed below.', otp });
 	} catch (error) {
 		return res.status(500).json({ message: 'Server error.', error });
 	}

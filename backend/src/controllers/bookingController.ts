@@ -1,7 +1,6 @@
 import type { Request, Response } from "express";
 import { Booking } from "../models/Booking.js";
 import { Bus } from "../models/Bus.js";
-import { sendBookingConfirmationEmail, sendCancellationEmail } from "../utils/emailService.js";
 
 /**
  * POST /api/bookings
@@ -36,29 +35,6 @@ export const createBooking = async (req: Request, res: Response) => {
     });
     
     console.log("[createBooking] Booking created successfully:", { id: booking._id, busId: booking.busId, userId: booking.userId, status: booking.status });
-
-    // Send confirmation email
-    try {
-      console.log("[createBooking] Attempting to send confirmation email to:", passengerEmail);
-      await sendBookingConfirmationEmail({
-        bookingId: booking._id.toString(),
-        passengerName,
-        passengerEmail,
-        busName: bus.busName,
-        source: bus.source,
-        destination: bus.destination,
-        date: bus.date,
-        departureTime: bus.departureTime,
-        arrivalTime: bus.arrivalTime,
-        seats: seats.map(String),
-        totalPrice,
-        transactionId: transactionId || "N/A"
-      });
-      console.log("[createBooking] Email sending process completed");
-    } catch (emailError) {
-      console.error("[createBooking] Email sending error (non-critical):", emailError);
-      // Continue with response even if email fails
-    }
 
     res.status(201).json(booking);
   } catch (error) {
@@ -147,20 +123,6 @@ export const cancelBooking = async (req: Request, res: Response) => {
       booking.busId,
       { $pull: { seatsBooked: { $in: booking.seats } } }
     );
-
-    // Send cancellation email
-    try {
-      await sendCancellationEmail(
-        booking.passengerEmail,
-        booking.passengerName,
-        booking._id.toString(),
-        booking.busDetails.busName,
-        booking.totalPrice
-      );
-    } catch (emailError) {
-      console.error("[cancelBooking] Email sending error (non-critical):", emailError);
-      // Continue with response even if email fails
-    }
 
     res.json({ message: "Booking cancelled", booking });
   } catch (error) {

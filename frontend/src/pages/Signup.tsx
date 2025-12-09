@@ -16,6 +16,7 @@ export default function Signup() {
   const [info, setInfo] = useState("");
   const [loading, setLoading] = useState(false);
   const [otpStage, setOtpStage] = useState(false);
+  const [receivedOtp, setReceivedOtp] = useState("");
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
 
@@ -60,9 +61,10 @@ export default function Signup() {
 
     setLoading(true);
     try {
-      await ApiService.signup(formData.name, formData.email, formData.password, formData.role);
+      const result = await ApiService.signup(formData.name, formData.email, formData.password, formData.role);
+      setReceivedOtp(result.otp || "");
       setOtpStage(true);
-      setInfo("OTP sent to your email. Enter it to verify and activate your account.");
+      setInfo("OTP generated. Enter it below to verify your account.");
     } catch (err: any) {
       setError(err.message || "Signup failed");
     } finally {
@@ -196,6 +198,13 @@ export default function Signup() {
 
         {otpStage && (
           <div className="space-y-4">
+            {receivedOtp && (
+              <div className="bg-yellow-100 border-l-4 border-yellow-500 p-4 mb-4">
+                <p className="font-bold text-yellow-800">Your OTP (for testing):</p>
+                <p className="text-2xl font-mono font-bold text-yellow-900 tracking-widest">{receivedOtp}</p>
+                <p className="text-xs text-yellow-700 mt-1">Expires in 10 minutes</p>
+              </div>
+            )}
             <div>
               <label className="block text-gray-700 font-bold mb-2">Enter OTP</label>
               <input
@@ -214,7 +223,6 @@ export default function Signup() {
             >
               {loading ? "Verifying..." : "Verify OTP"}
             </button>
-            <p className="text-sm text-gray-600">OTP sent to {formData.email}. Expires in 10 minutes.</p>
           </div>
         )}
 

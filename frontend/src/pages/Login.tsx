@@ -19,6 +19,7 @@ export default function Login() {
   const [forgotOtp, setForgotOtp] = useState("");
   const [newPassword, setNewPassword] = useState("");
   const [confirmNewPassword, setConfirmNewPassword] = useState("");
+  const [receivedOtp, setReceivedOtp] = useState("");
 
   const passwordStrong = (pwd: string) => /^(?=.*[A-Za-z])(?=.*\d)(?=.*[^A-Za-z0-9]).{6,}$/.test(pwd);
   const passwordStrengthLabel = (pwd: string) => {
@@ -70,8 +71,9 @@ export default function Login() {
     }
     setLoading(true);
     try {
-      await ApiService.requestPasswordReset(forgotEmail);
-      setInfo("Reset OTP sent to your email. Check inbox/spam.");
+      const result = await ApiService.requestPasswordReset(forgotEmail);
+      setReceivedOtp(result.otp || "");
+      setInfo("Reset OTP generated. Enter it below to reset your password.");
     } catch (err: any) {
       setError(err.message || "Could not send OTP");
     } finally {
@@ -162,6 +164,13 @@ export default function Login() {
 
         {showForgot && (
           <div className="space-y-4">
+            {receivedOtp && (
+              <div className="bg-yellow-100 border-l-4 border-yellow-500 p-4 mb-4">
+                <p className="font-bold text-yellow-800">Your Reset OTP (for testing):</p>
+                <p className="text-2xl font-mono font-bold text-yellow-900 tracking-widest">{receivedOtp}</p>
+                <p className="text-xs text-yellow-700 mt-1">Expires in 10 minutes</p>
+              </div>
+            )}
             <div>
               <label className="block text-gray-700 font-bold mb-2">Email</label>
               <input
