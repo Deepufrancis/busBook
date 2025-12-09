@@ -127,6 +127,20 @@ export default function BusesList() {
     }
   };
 
+  const safeDate = (value?: string) => {
+    if (!value) return "N/A";
+    const d = new Date(value);
+    return isNaN(d.getTime()) ? "N/A" : d.toLocaleDateString();
+  };
+
+  const safeTime = (value?: string) => {
+    if (!value) return "N/A";
+    const d = new Date(value);
+    return isNaN(d.getTime())
+      ? "N/A"
+      : d.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" });
+  };
+
   return (
     <div className="min-h-screen bg-gray-100 py-12">
       <div className="max-w-7xl mx-auto px-4">
@@ -169,19 +183,13 @@ export default function BusesList() {
                         {bus.source} → {bus.destination}
                       </td>
                       <td className="px-6 py-4 text-gray-700">
-                        {new Date(bus.date).toLocaleDateString()}
+                        {safeDate(bus.date || bus.departureTime)}
                       </td>
                       <td className="px-6 py-4 text-gray-700">
-                        {new Date(bus.departureTime).toLocaleTimeString([], {
-                          hour: "2-digit",
-                          minute: "2-digit",
-                        })}
+                        {safeTime(bus.departureTime)}
                       </td>
                       <td className="px-6 py-4 text-gray-700">
-                        {new Date(bus.arrivalTime).toLocaleTimeString([], {
-                          hour: "2-digit",
-                          minute: "2-digit",
-                        })}
+                        {safeTime(bus.arrivalTime)}
                       </td>
                       <td className="px-6 py-4 text-center font-semibold text-green-600">
                         ₹{bus.price}
