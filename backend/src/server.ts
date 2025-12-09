@@ -63,8 +63,8 @@ app.use("/api/payments", paymentRoutes);
 const frontendPath = path.join(__dirname, "../../frontend/dist");
 app.use(express.static(frontendPath));
 
-// SPA fallback: serve index.html for all non-API routes
-app.get("*", (req, res) => {
+// SPA fallback: serve index.html for all non-API routes using middleware
+app.use((req, res) => {
   res.sendFile(path.join(frontendPath, "index.html"));
 });
 
