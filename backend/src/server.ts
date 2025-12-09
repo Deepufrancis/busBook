@@ -45,8 +45,8 @@ const frontendPath = path.join(__dirname, "../../frontend/dist");
 app.use(express.static(frontendPath, { maxAge: "1h" }));
 
 // SPA fallback: serve index.html for all non-API routes
-app.get("*", (req, res) => {
-  // Don't serve index.html for API routes or static assets
+app.use((req, res) => {
+  // Don't serve index.html for API routes
   if (req.path.startsWith("/api")) {
     return res.status(404).json({ error: "API endpoint not found" });
   }
