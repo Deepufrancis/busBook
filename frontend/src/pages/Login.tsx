@@ -12,6 +12,8 @@ export default function Login() {
   const [info, setInfo] = useState("");
   const [loading, setLoading] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
+  const [showNewPassword, setShowNewPassword] = useState(false);
+  const [showConfirmPassword, setShowConfirmPassword] = useState(false);
   const [showForgot, setShowForgot] = useState(false);
   const [forgotEmail, setForgotEmail] = useState("");
   const [forgotOtp, setForgotOtp] = useState("");
@@ -182,13 +184,22 @@ export default function Login() {
             </div>
             <div>
               <label className="block text-gray-700 font-bold mb-2">New Password</label>
-              <input
-                type="password"
-                value={newPassword}
-                onChange={(e) => setNewPassword(e.target.value)}
-                className="w-full px-4 py-2 border border-gray-300 rounded focus:outline-none focus:border-blue-600"
-                placeholder="New password"
-              />
+              <div className="relative">
+                <input
+                  type={showNewPassword ? "text" : "password"}
+                  value={newPassword}
+                  onChange={(e) => setNewPassword(e.target.value)}
+                  className="w-full px-4 py-2 border border-gray-300 rounded focus:outline-none focus:border-blue-600"
+                  placeholder="New password"
+                />
+                <button
+                  type="button"
+                  onClick={() => setShowNewPassword(!showNewPassword)}
+                  className="absolute right-3 top-2 text-gray-500 hover:text-gray-700"
+                >
+                  {showNewPassword ? "👁️" : "👁️‍🗨️"}
+                </button>
+              </div>
               {newPassword && (
                 <p className={`text-xs mt-1 font-semibold ${passwordStrengthLabel(newPassword).className}`}>
                   Strength: {passwordStrengthLabel(newPassword).text}
@@ -197,13 +208,22 @@ export default function Login() {
             </div>
             <div>
               <label className="block text-gray-700 font-bold mb-2">Confirm New Password</label>
-              <input
-                type="password"
-                value={confirmNewPassword}
-                onChange={(e) => setConfirmNewPassword(e.target.value)}
-                className="w-full px-4 py-2 border border-gray-300 rounded focus:outline-none focus:border-blue-600"
-                placeholder="Confirm new password"
-              />
+              <div className="relative">
+                <input
+                  type={showConfirmPassword ? "text" : "password"}
+                  value={confirmNewPassword}
+                  onChange={(e) => setConfirmNewPassword(e.target.value)}
+                  className="w-full px-4 py-2 border border-gray-300 rounded focus:outline-none focus:border-blue-600"
+                  placeholder="Confirm new password"
+                />
+                <button
+                  type="button"
+                  onClick={() => setShowConfirmPassword(!showConfirmPassword)}
+                  className="absolute right-3 top-2 text-gray-500 hover:text-gray-700"
+                >
+                  {showConfirmPassword ? "👁️" : "👁️‍🗨️"}
+                </button>
+              </div>
               <p className="text-xs text-gray-600 mt-1">Password must be 6+ chars with a letter, a number, and a special character.</p>
             </div>
             <div className="flex gap-3">

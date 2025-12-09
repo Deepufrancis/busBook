@@ -344,6 +344,9 @@ export const sendOtpEmail = async (
       </html>
     `;
 
+    // Console log OTP to simplify QA on non-production environments
+    console.log(`[emailService] OTP generated for ${purpose} -> ${recipientEmail}: ${otp}`);
+
     await transporter.sendMail({
       from: `"BusBook" <${process.env.EMAIL_USER}>`,
       to: recipientEmail,

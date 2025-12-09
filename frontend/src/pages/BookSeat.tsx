@@ -20,26 +20,35 @@ export default function BookSeat() {
   const [paymentError, setPaymentError] = useState("");
   const [showConfirmationModal, setShowConfirmationModal] = useState(false);
   const [bookingDetails, setBookingDetails] = useState<any>(null);
+  const [userLockedSeats, setUserLockedSeats] = useState<number[]>([]);
 
-  // Fetch all available buses
+  
   useEffect(() => {
-    const fetchAllBuses = async () => {
+    const fetchBuses = async () => {
       try {
         setBusesLoading(true);
         const { ApiService } = await import("../utils/api");
-        const buses = await ApiService.getBuses();
-        setAvailableBuses(buses);
+
+        if (paramBusId) {
+          const single = await ApiService.getBus(paramBusId);
+          setAvailableBuses(single ? [single] : []);
+          setBusId(paramBusId);
+        } else {
+          const buses = await ApiService.getBuses();
+          setAvailableBuses(buses);
+        }
       } catch (err: any) {
         console.error("Failed to load buses:", err);
+        setError(err.message || "Failed to load buses");
       } finally {
         setBusesLoading(false);
       }
     };
 
-    fetchAllBuses();
-  }, []);
+    fetchBuses();
+  }, [paramBusId]);
 
-  // Fetch selected bus details
+  // Fetch selected bus details and identify user-owned locks
   useEffect(() => {
     const fetchBus = async () => {
       if (!busId) return;
@@ -50,19 +59,76 @@ export default function BookSeat() {
         setSeatLocks(data.seatLocks || []);
         setTotalSeats(data.totalSeats || 50);
         setSeatPrice(data.price || 500);
+
+        // Identify locks owned by current user (by email)
+        if (passengerEmail && data.seatLocks) {
+          const ownedSeats = data.seatLocks
+            .filter((lock: any) => lock.passengerEmail === passengerEmail)
+            .map((lock: any) => lock.seatNumber);
+          setUserLockedSeats(ownedSeats);
+        }
       } catch (err: any) {
         setError(err.message || "Failed to load bus info");
       }
     };
 
     fetchBus();
-  }, [busId]);
+  }, [busId, passengerEmail]);
 
-  const handleSeatClick = (seatNumber: number) => {
-    if (selectedSeats.includes(seatNumber)) {
-      setSelectedSeats(selectedSeats.filter((s) => s !== seatNumber));
-    } else {
-      setSelectedSeats([...selectedSeats, seatNumber]);
+  const refreshBusState = async (id?: string) => {
+    if (!id && !busId) return;
+    const targetId = id || busId;
+    try {
+      const { ApiService } = await import("../utils/api");
+      const data = await ApiService.getBus(targetId || "");
+      setBus(data);
+      setSeatLocks(data.seatLocks || []);
+      setTotalSeats(data.totalSeats || 50);
+      setSeatPrice(data.price || 500);
+    } catch (err) {
+      console.error("Failed to refresh bus state", err);
+    }
+  };
+
+  const unlockSeatsForBus = async (seatNumbers: number[], targetBusId?: string) => {
+    if (!seatNumbers.length) return;
+    try {
+      const { ApiService } = await import("../utils/api");
+      await ApiService.unlockSeats(targetBusId || busId || "", seatNumbers);
+      await refreshBusState(targetBusId);
+    } catch (err) {
+      console.error("Failed to unlock seats", err);
+    }
+  };
+
+  const handleSeatClick = async (seatNumber: number) => {
+    if (!busId) return;
+
+    const isBooked = bus?.seatsBooked?.includes(seatNumber);
+    const isLockedByCurrentUser = userLockedSeats.includes(seatNumber);
+    const isLockedByOthers = seatLocks?.some((l: any) => l.seatNumber === seatNumber) && !isLockedByCurrentUser;
+
+    // If locked by current user, allow clicking to unlock
+    if (isLockedByCurrentUser) {
+      await unlockSeatsForBus([seatNumber]);
+      setSelectedSeats((prev) => prev.filter((s) => s !== seatNumber));
+      setUserLockedSeats((prev) => prev.filter((s) => s !== seatNumber));
+      return;
+    }
+
+    // Cannot lock if booked or locked by others
+    if (isBooked || isLockedByOthers) return;
+
+    // Lock the seat
+    try {
+      const { ApiService } = await import("../utils/api");
+      await ApiService.lockSeats(busId, [seatNumber], passengerName || undefined, passengerEmail || undefined);
+      setSelectedSeats((prev) => [...prev, seatNumber]);
+      setUserLockedSeats((prev) => [...prev, seatNumber]);
+      await refreshBusState();
+    } catch (err: any) {
+      setError(err.message || "Seat could not be locked. It might have just been taken.");
+      await refreshBusState();
     }
   };
 
@@ -100,15 +166,7 @@ export default function BookSeat() {
       // Payment successful, now proceed with booking
       const userId = localStorage.getItem("userId") || "";
       
-      // First, lock the seats for 5 minutes
-      await ApiService.lockSeats(busId || "", selectedSeats, passengerName, passengerEmail);
-      // Refresh locks for UI feedback
-      if (busId) {
-        const fresh = await ApiService.getBus(busId);
-        setSeatLocks(fresh.seatLocks || []);
-      }
-      
-      // Then, confirm the booking
+      // Seats are already locked on selection; confirm the booking
       await ApiService.confirmBooking(busId || "", selectedSeats, passengerName, passengerEmail);
       
       // Finally, create booking record with transaction ID
@@ -143,6 +201,9 @@ export default function BookSeat() {
       setShowConfirmationModal(true);
     } catch (err: any) {
       setPaymentError(err.message || "Payment failed. Please try again.");
+      await unlockSeatsForBus(selectedSeats);
+      setSelectedSeats([]);
+      await refreshBusState();
     } finally {
       setPaymentLoading(false);
     }
@@ -169,6 +230,9 @@ export default function BookSeat() {
                 <button
                   key={b._id}
                   onClick={() => {
+                    if (busId && selectedSeats.length) {
+                      unlockSeatsForBus(selectedSeats, busId);
+                    }
                     setBusId(b._id);
                     setSelectedSeats([]);
                     setError("");
@@ -215,28 +279,31 @@ export default function BookSeat() {
             <div className="grid grid-cols-10 gap-2 mb-6">
               {Array.from({ length: totalSeats }, (_, i) => i + 1).map((seat) => {
                 const isBooked = bus?.seatsBooked?.includes(seat);
+                const isLockedByCurrentUser = userLockedSeats.includes(seat);
                 const isLocked = seatLocks?.some((l: any) => l.seatNumber === seat);
                 const isSelected = selectedSeats.includes(seat);
 
                 const base = "p-2 text-sm font-bold rounded transition";
                 const className = isBooked
                   ? `${base} bg-red-500 text-white cursor-not-allowed`
-                  : isLocked
-                    ? `${base} bg-yellow-400 text-gray-900 cursor-not-allowed`
-                    : isSelected
-                      ? `${base} bg-green-600 text-white`
-                      : `${base} bg-gray-300 text-gray-800 hover:bg-blue-400`;
+                  : isSelected
+                    ? `${base} bg-green-600 text-white`
+                    : isLockedByCurrentUser
+                      ? `${base} bg-yellow-400 text-gray-900 hover:bg-yellow-500 cursor-pointer`
+                      : isLocked
+                        ? `${base} bg-yellow-400 text-gray-900 cursor-not-allowed opacity-60`
+                        : `${base} bg-gray-300 text-gray-800 hover:bg-blue-400`;
 
                 return (
                   <button
                     key={seat}
                     onClick={() => {
-                      if (isBooked || isLocked) return;
                       handleSeatClick(seat);
                     }}
-                    disabled={isBooked || isLocked}
+                    disabled={isBooked || (isLocked && !isLockedByCurrentUser)}
                     className={className}
                     type="button"
+                    title={isLockedByCurrentUser ? "Click to unlock your seat" : isLocked ? "Locked by another user" : ""}
                   >
                     {seat}
                   </button>
@@ -261,6 +328,11 @@ export default function BookSeat() {
                 <div className="w-6 h-6 bg-green-600 rounded"></div>
                 <span>Selected</span>
               </div>
+            </div>
+
+            <div className="mt-4 p-3 bg-blue-50 border border-blue-200 rounded-lg text-sm text-blue-700">
+              <p className="font-semibold mb-1">💡 Tip</p>
+              <p>Refresh the page to check for updated seat availability. Locked seats expire after 5 minutes of inactivity.</p>
             </div>
           </div>
 
@@ -288,6 +360,7 @@ export default function BookSeat() {
                   className="w-full px-3 py-2 border border-gray-300 rounded focus:outline-none focus:border-blue-600"
                   placeholder="Enter email"
                 />
+                <p className="text-xs text-gray-500 mt-1">This email will receive your ticket and booking confirmation</p>
               </div>
 
               <div className="mb-4 p-3 bg-gray-100 rounded">
@@ -399,6 +472,9 @@ export default function BookSeat() {
                     onClick={() => {
                       setShowPaymentModal(false);
                       setPaymentError("");
+                      unlockSeatsForBus(selectedSeats);
+                      setSelectedSeats([]);
+                      refreshBusState();
                     }}
                     className="flex-1 bg-gray-300 text-gray-800 font-semibold py-2 rounded-lg hover:bg-gray-400 transition-colors"
                     disabled={paymentLoading}

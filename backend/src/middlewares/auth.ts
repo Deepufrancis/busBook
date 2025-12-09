@@ -21,7 +21,10 @@ export const authMiddleware = async (req: AuthRequest, res: Response, next: Next
   
   try {
     const decoded: any = jwt.verify(token, JWT_SECRET!);
-    const user = await User.findById(decoded.id).select("-passwordHash");
+    const userId = decoded.userId || decoded.id; // support legacy token payloads
+    if (!userId) return res.status(401).json({ error: "Invalid token" });
+
+    const user = await User.findById(userId).select("-passwordHash");
     if (!user) return res.status(401).json({ error: "Invalid token" });
     req.user = user;
     next();

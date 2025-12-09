@@ -117,6 +117,13 @@ export class ApiService {
     return this.handleResponse(response);
   }
 
+  static async getMyBuses() {
+    const response = await fetch(`${API_BASE_URL}/buses/mine`, {
+      headers: this.getAuthHeader(),
+    });
+    return this.handleResponse(response);
+  }
+
   static async addBus(busData: {
     busName: string;
     source: string;
@@ -141,6 +148,15 @@ export class ApiService {
       method: "POST",
       headers: this.getAuthHeader(),
       body: JSON.stringify({ seats, passengerName, passengerEmail }),
+    });
+    return this.handleResponse(response);
+  }
+
+  static async unlockSeats(busId: string, seats: number[]) {
+    const response = await fetch(`${API_BASE_URL}/buses/unlock/${busId}`, {
+      method: "POST",
+      headers: this.getAuthHeader(),
+      body: JSON.stringify({ seats }),
     });
     return this.handleResponse(response);
   }

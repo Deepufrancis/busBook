@@ -19,6 +19,7 @@ export interface IBus extends Document {
   totalSeats: number;
   seatsBooked: number[];
   seatLocks: ISeatLock[];
+  createdBy?: mongoose.Types.ObjectId;
 }
 
 const seatLockSchema = new Schema<ISeatLock>({
@@ -39,6 +40,8 @@ const busSchema = new Schema<IBus>(
     arrivalTime: { type: String, required: true },
     price: { type: Number, required: true },
     totalSeats: { type: Number, required: true },
+
+    createdBy: { type: Schema.Types.ObjectId, ref: "User" },
 
     seatsBooked: { type: [Number], default: [] },
 

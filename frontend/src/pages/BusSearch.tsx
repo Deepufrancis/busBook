@@ -3,13 +3,16 @@ import { useNavigate, useSearchParams } from "react-router-dom";
 
 interface Bus {
   _id: string;
-  name: string;
+  busName: string;
   source: string;
   destination: string;
-  departure: string;
-  arrival: string;
+  date: string;
+  departureTime: string;
+  arrivalTime: string;
   price: number;
-  seats: number;
+  totalSeats: number;
+  seatsBooked: number[];
+  createdBy?: { name?: string; email?: string };
 }
 
 export default function BusSearch() {
@@ -183,36 +186,40 @@ export default function BusSearch() {
               </div>
               
               <div className="space-y-4">
-                {buses.map((bus) => (
-                  <div key={bus._id} className="bg-white p-6 rounded-lg shadow-lg hover:shadow-xl transition-shadow">
-                    <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-4">
-                      <div>
-                        <h3 className="text-lg font-bold text-gray-800">{bus.name}</h3>
-                        <p className="text-gray-600">{bus.source} → {bus.destination}</p>
-                      </div>
-                      <div>
-                        <p className="text-gray-700">
-                          <span className="font-bold">Departs:</span> {new Date(bus.departure).toLocaleString()}
-                        </p>
-                        <p className="text-gray-700">
-                          <span className="font-bold">Arrives:</span> {new Date(bus.arrival).toLocaleString()}
-                        </p>
-                      </div>
-                      <div>
-                        <p className="text-gray-700"><span className="font-bold">Available Seats:</span> {bus.seats}</p>
-                        <p className="text-gray-700"><span className="font-bold">Price:</span> ₹{bus.price}</p>
-                      </div>
-                      <div className="flex items-center">
-                        <button
-                          onClick={() => navigate(`/book/${bus._id}`)}
-                          className="w-full bg-green-600 text-white font-bold py-2 rounded hover:bg-green-700 transition-colors"
-                        >
-                          Book Now
-                        </button>
+                {buses.map((bus) => {
+                  const availableSeats = Math.max(0, bus.totalSeats - (bus.seatsBooked?.length || 0));
+                  return (
+                    <div key={bus._id} className="bg-white p-6 rounded-lg shadow-lg hover:shadow-xl transition-shadow">
+                      <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-4">
+                        <div>
+                          <h3 className="text-lg font-bold text-gray-800">{bus.busName}</h3>
+                          <p className="text-gray-600">{bus.source} → {bus.destination}</p>
+                          <p className="text-sm text-gray-500 mt-1">Service Provider: {bus.createdBy?.name || "N/A"}</p>
+                        </div>
+                        <div>
+                          <p className="text-gray-700">
+                            <span className="font-bold">Departs:</span> {new Date(bus.departureTime).toLocaleString()}
+                          </p>
+                          <p className="text-gray-700">
+                            <span className="font-bold">Arrives:</span> {new Date(bus.arrivalTime).toLocaleString()}
+                          </p>
+                        </div>
+                        <div>
+                          <p className="text-gray-700"><span className="font-bold">Available Seats:</span> {availableSeats}</p>
+                          <p className="text-gray-700"><span className="font-bold">Price:</span> ₹{bus.price}</p>
+                        </div>
+                        <div className="flex items-center">
+                          <button
+                            onClick={() => navigate(`/book/${bus._id}`)}
+                            className="w-full bg-green-600 text-white font-bold py-2 rounded hover:bg-green-700 transition-colors"
+                          >
+                            Book Now
+                          </button>
+                        </div>
                       </div>
                     </div>
-                  </div>
-                ))}
+                  );
+                })}
               </div>
             </div>
           ) : (

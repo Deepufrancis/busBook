@@ -1,6 +1,7 @@
 import type { Request, Response } from "express";
 import { Bus } from "../models/Bus.js";
 import { triggerBusCleanup } from "../utils/busCleanup.js";
+import type { AuthRequest } from "../middlewares/auth.js";
 
 /**
  * GET /api/buses/:id
@@ -8,12 +9,24 @@ import { triggerBusCleanup } from "../utils/busCleanup.js";
  */
 export const getBusById = async (req: Request, res: Response) => {
   try {
-    const bus = await Bus.findById(req.params.id);
+    const bus = await Bus.findById(req.params.id)
+      .populate("createdBy", "name email")
+      .lean();
+
     if (!bus) return res.status(404).json({ error: "Bus not found" });
 
     // Drop expired locks before returning
-    bus.seatLocks = bus.seatLocks.filter(lock => lock.expiresAt > new Date());
-    await bus.save();
+    const filteredLocks = (bus.seatLocks || []).filter(lock => lock.expiresAt > new Date());
+
+    // Persist cleaned locks if any removed
+    if (bus.seatLocks && filteredLocks.length !== bus.seatLocks.length) {
+      await Bus.updateOne(
+        { _id: bus._id },
+        { $set: { seatLocks: filteredLocks } }
+      );
+    }
+
+    bus.seatLocks = filteredLocks;
 
     res.json(bus);
   } catch (error) {
@@ -34,7 +47,9 @@ export const getBuses = async (req: Request, res: Response) => {
     if (destination) query.destination = destination;
     if (date) query.date = date;
 
-    const buses = await Bus.find(query);
+    const buses = await Bus.find(query)
+      .populate("createdBy", "name email")
+      .lean();
     res.json(buses);
   } catch (error) {
     res.status(500).json({ error: "Failed to fetch buses" });
@@ -45,12 +60,34 @@ export const getBuses = async (req: Request, res: Response) => {
  * POST /api/buses
  * Create a new bus
  */
-export const addBus = async (req: Request, res: Response) => {
+export const addBus = async (req: AuthRequest, res: Response) => {
   try {
-    const bus = await Bus.create(req.body);
+    const payload = {
+      ...req.body,
+      createdBy: req.user?._id
+    };
+    const bus = await Bus.create(payload);
     res.json(bus);
   } catch (error) {
     res.status(500).json({ error: "Failed to add bus" });
+  }
+};
+
+/**
+ * GET /api/buses/mine
+ * Fetch buses created by the authenticated admin
+ */
+export const getMyBuses = async (req: AuthRequest, res: Response) => {
+  try {
+    if (!req.user?._id) {
+      return res.status(401).json({ error: "Unauthorized" });
+    }
+    const buses = await Bus.find({ createdBy: req.user._id })
+      .populate("createdBy", "name email")
+      .lean();
+    res.json(buses);
+  } catch (error) {
+    res.status(500).json({ error: "Failed to fetch buses" });
   }
 };
 
@@ -101,6 +138,32 @@ export const lockSeats = async (req: Request, res: Response) => {
     });
   } catch (error) {
     res.status(500).json({ error: "Failed to lock seats" });
+  }
+};
+
+/**
+ * POST /api/buses/unlock/:id
+ * Release temporary locks for specific seats
+ */
+export const unlockSeats = async (req: Request, res: Response) => {
+  try {
+    const { seats } = req.body as { seats: number[] };
+    if (!Array.isArray(seats) || seats.length === 0) {
+      return res.status(400).json({ error: "No seats provided to unlock" });
+    }
+
+    const bus = await Bus.findById(req.params.id);
+    if (!bus) return res.status(404).json({ error: "Bus not found" });
+
+    const before = bus.seatLocks.length;
+    bus.seatLocks = bus.seatLocks.filter(lock => !seats.includes(lock.seatNumber));
+    const removed = before - bus.seatLocks.length;
+
+    await bus.save();
+
+    res.json({ message: "Seat locks released", removed });
+  } catch (error) {
+    res.status(500).json({ error: "Failed to unlock seats" });
   }
 };
 

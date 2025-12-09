@@ -29,11 +29,11 @@ const Navbar = () => {
   const closeMobileMenu = () => setMobileMenuOpen(false);
 
   return (
-    <nav className="w-full bg-blue-600 text-white px-4 md:px-6 py-3 shadow">
+    <nav className="w-full bg-gray-900 text-white px-4 md:px-6 py-3 shadow">
       <div className="flex justify-between items-center">
         {/* Logo */}
         <h1 
-          className="font-bold text-lg md:text-xl cursor-pointer hover:text-blue-100 transition" 
+          className="font-bold text-lg md:text-xl cursor-pointer hover:text-cyan-200 transition" 
           onClick={() => {
             navigate("/");
             closeMobileMenu();
@@ -48,22 +48,26 @@ const Navbar = () => {
             <>
               {role === "admin" ? (
                 <>
-                  <Link to="/admin" className="hover:text-blue-100 transition">Dashboard</Link>
-                  <Link to="/add-bus" className="hover:text-blue-100 transition">Add Bus</Link>
+                  <Link to="/admin" className="hover:text-cyan-200 transition">Dashboard</Link>
+                  <Link to="/add-bus" className="hover:text-cyan-200 transition">Add Bus</Link>
                 </>
               ) : role === "user" ? (
                 <>
-                  <Link to="/userhome" className="hover:text-blue-100 transition">Home</Link>
-                  <Link to="/search" className="hover:text-blue-100 transition">Search</Link>
-                  <Link to="/bookings" className="hover:text-blue-100 transition">My Bookings</Link>
+                  <Link to="/userhome" className="hover:text-cyan-200 transition">Home</Link>
+                  <Link to="/search" className="hover:text-cyan-200 transition">Search</Link>
+                  <Link to="/bookings" className="hover:text-cyan-200 transition">My Bookings</Link>
                 </>
               ) : null}
 
-              {name && <span className="font-medium">{name}</span>}
+              {name && (
+                <span className="px-3 py-1 rounded-full bg-white/10 border border-white/20 text-sm font-semibold text-white">
+                  {name}
+                </span>
+              )}
 
               <button
                 onClick={handleLogoutClick}
-                className="bg-white text-blue-600 px-4 py-1 rounded hover:bg-gray-200 transition"
+                className="bg-white text-gray-900 px-4 py-1 rounded hover:bg-gray-200 transition"
               >
                 Logout
               </button>
@@ -86,19 +90,19 @@ const Navbar = () => {
 
       {/* Mobile Menu */}
       {!isAuthPage && mobileMenuOpen && (
-        <div className="md:hidden mt-4 pb-4 space-y-3 border-t border-blue-500 pt-4">
+        <div className="md:hidden mt-4 pb-4 space-y-3 border-t border-gray-700 pt-4">
           {role === "admin" ? (
             <>
               <Link 
                 to="/admin" 
-                className="block px-4 py-2 rounded hover:bg-blue-700 transition"
+                className="block px-4 py-2 rounded hover:bg-gray-800 transition"
                 onClick={closeMobileMenu}
               >
                 Dashboard
               </Link>
               <Link 
                 to="/add-bus" 
-                className="block px-4 py-2 rounded hover:bg-blue-700 transition"
+                className="block px-4 py-2 rounded hover:bg-gray-800 transition"
                 onClick={closeMobileMenu}
               >
                 Add Bus
@@ -108,21 +112,21 @@ const Navbar = () => {
             <>
               <Link 
                 to="/userhome" 
-                className="block px-4 py-2 rounded hover:bg-blue-700 transition"
+                className="block px-4 py-2 rounded hover:bg-gray-800 transition"
                 onClick={closeMobileMenu}
               >
                 Home
               </Link>
               <Link 
                 to="/search" 
-                className="block px-4 py-2 rounded hover:bg-blue-700 transition"
+                className="block px-4 py-2 rounded hover:bg-gray-800 transition"
                 onClick={closeMobileMenu}
               >
                 Search
               </Link>
               <Link 
                 to="/bookings" 
-                className="block px-4 py-2 rounded hover:bg-blue-700 transition"
+                className="block px-4 py-2 rounded hover:bg-gray-800 transition"
                 onClick={closeMobileMenu}
               >
                 My Bookings
@@ -131,14 +135,14 @@ const Navbar = () => {
           ) : null}
 
           {name && (
-            <div className="px-4 py-2 text-sm font-medium text-blue-100">
-              Logged in as: {name}
+            <div className="px-4 py-2 text-sm font-semibold text-white flex items-center gap-2">
+              <span className="px-3 py-1 rounded-full bg-white/10 border border-white/15">{name}</span>
             </div>
           )}
 
           <button
             onClick={handleLogoutClick}
-            className="w-full bg-white text-blue-600 px-4 py-2 rounded hover:bg-gray-200 transition font-semibold"
+            className="w-full bg-white text-gray-900 px-4 py-2 rounded hover:bg-gray-200 transition font-semibold"
           >
             Logout
           </button>

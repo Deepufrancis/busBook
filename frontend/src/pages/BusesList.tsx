@@ -36,7 +36,7 @@ export default function BusesList() {
   useEffect(() => {
     const fetchBuses = async () => {
       try {
-        const data = await ApiService.getBuses();
+        const data = await ApiService.getMyBuses();
         setBuses(data);
       } catch (err: any) {
         setError(err.message || "Failed to fetch buses");
