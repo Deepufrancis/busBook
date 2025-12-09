@@ -11,6 +11,7 @@ import UserHome from "../pages/UserHome";
 import BusSearch from "../pages/BusSearch";
 import BookSeat from "../pages/BookSeat";
 import Bookings from "../pages/Bookings";
+import NotFound from "../pages/NotFound";
 
 export default function AppRoutes() {
   return (
@@ -103,6 +104,7 @@ export default function AppRoutes() {
         />
         
         <Route path="/" element={<Navigate to="/login" replace />} />
+        <Route path="*" element={<NotFound />} />
       </Routes>
     </>
   );
